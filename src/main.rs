@@ -1,6 +1,5 @@
 use clap::{command, Arg};
 use std::fs;
-
 use walker::walk;
 
 mod analyzer;
@@ -20,11 +19,11 @@ fn main() {
         let content = fs::read_to_string(tsx).expect("Something went wrong reading the file");
         let module = parser::parse_tsx_file(&content);
 
-        let mut analyzer = analyzer::Analyzer::new();
-        analyzer.analyze_module(&module);
+        // let mut analyzer = analyzer::Analyzer::new();
+        // analyzer.analyze_module(&module);
 
-        println!("Strings: {:?}", analyzer.result.strings);
-        println!("Template strings: {:?}", analyzer.result.template_strings);
-        println!("JSX texts: {:?}", analyzer.result.jsx_texts);
+        // println!("Strings: {:?}", analyzer.result.strings);
+        // println!("Template strings: {:?}", analyzer.result.template_strings);
+        // println!("JSX texts: {:?}", analyzer.result.jsx_texts);
     }
 }
