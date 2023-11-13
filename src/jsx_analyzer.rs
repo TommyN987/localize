@@ -2,17 +2,30 @@ use swc_ecma_ast::{
     Expr, JSXAttr, JSXAttrOrSpread, JSXElement, JSXElementChild, JSXExpr, JSXExprContainer,
     JSXFragment, JSXOpeningElement, JSXText, Lit, Str,
 };
+use swc_ecma_visit::Visit;
 
 #[derive(Debug)]
 pub struct JSXAnalyzer {
+    pub filename: String,
     pub jsx_texts: Vec<JSXText>,
     pub string_literals: Vec<Str>,
     pub props: Vec<JSXAttr>,
 }
 
+impl Visit for JSXAnalyzer {
+    fn visit_jsx_element(&mut self, jsx_element: &JSXElement) {
+        self.analyze_jsx_element(jsx_element);
+    }
+
+    fn visit_jsx_fragment(&mut self, jsx_fragment: &JSXFragment) {
+        self.analyze_jsx_fragment(jsx_fragment);
+    }
+}
+
 impl JSXAnalyzer {
-    pub fn new() -> Self {
+    pub fn new(filename: &str) -> Self {
         Self {
+            filename: filename.to_string(),
             jsx_texts: Vec::new(),
             string_literals: Vec::new(),
             props: Vec::new(),

@@ -1,8 +1,9 @@
 use clap::{command, Arg};
-use std::fs;
+use swc_common::errors::{ColorConfig, Handler};
+use swc_ecma_visit::VisitWith;
 use walker::walk;
 
-mod analyzer;
+mod jsx_analyzer;
 mod parser;
 mod walker;
 
@@ -15,15 +16,30 @@ fn main() {
 
     let tsx_vec = walk(path);
 
+    let mut parser = parser::Parser::new();
+
     for tsx in tsx_vec {
-        let content = fs::read_to_string(tsx).expect("Something went wrong reading the file");
-        let module = parser::parse_tsx_file(&content);
-
-        // let mut analyzer = analyzer::Analyzer::new();
-        // analyzer.analyze_module(&module);
-
-        // println!("Strings: {:?}", analyzer.result.strings);
-        // println!("Template strings: {:?}", analyzer.result.template_strings);
-        // println!("JSX texts: {:?}", analyzer.result.jsx_texts);
+        let error_handler = Handler::with_tty_emitter(
+            ColorConfig::Always,
+            true,
+            false,
+            Some(parser.source_map.clone()),
+        );
+        let module = parser.parse_file(&tsx);
+        match module {
+            Ok(module) => {
+                let mut analyzer = jsx_analyzer::JSXAnalyzer::new(&tsx.to_str().unwrap());
+                for child in module.body {
+                    child.visit_with(&mut analyzer);
+                }
+                parser.analyzers.push(analyzer);
+            }
+            Err(error) => {
+                error.into_diagnostic(&error_handler).emit();
+            }
+        }
+    }
+    for analyzer in parser.analyzers {
+        println!("{:?}", analyzer);
     }
 }

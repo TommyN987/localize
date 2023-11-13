@@ -1,40 +1,43 @@
-use swc_common::{
-    // errors::{ColorConfig, Handler},
-    FileName,
-    SourceMap,
-};
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
+use std::path::PathBuf;
 
-// Function to parse TypeScript file and return the AST
-pub fn parse_tsx_file(file_content: &str) -> swc_ecma_ast::Module {
-    // Create a SourceMap
-    let source_map = SourceMap::default();
-    let source_file = source_map.new_source_file(
-        FileName::Custom("file.tsx".to_string()),
-        file_content.to_string(),
-    );
+use swc_common::{comments::SingleThreadedComments, sync::Lrc, SourceMap};
+use swc_ecma_ast::{EsVersion, Module};
+use swc_ecma_parser::{error::Error, lexer::Lexer, Parser as SWCParser, Syntax, TsConfig};
 
-    // Create an error handler
-    // let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, None);
+use crate::jsx_analyzer::JSXAnalyzer;
 
-    // Create a lexer
-    let lexer = Lexer::new(
-        Syntax::Typescript(TsConfig {
-            tsx: true,
-            decorators: false,
-            dts: false,
-            ..Default::default()
-        }),
-        Default::default(),
-        StringInput::from(&*source_file),
-        None,
-    );
+pub struct Parser {
+    pub source_map: Lrc<SourceMap>,
+    pub analyzers: Vec<JSXAnalyzer>,
+}
 
-    // Create a parser
-    let mut parser = Parser::new_from(lexer);
+impl Parser {
+    pub fn new() -> Self {
+        Self {
+            source_map: Lrc::new(SourceMap::default()),
+            analyzers: Vec::new(),
+        }
+    }
 
-    // Parse the script
-    let module = parser.parse_module().unwrap();
-
-    module
+    pub fn parse_file(&self, filename: &PathBuf) -> Result<Module, Error> {
+        let fm = self
+            .source_map
+            .load_file(filename)
+            .expect("Failed to load file");
+        let comments = SingleThreadedComments::default();
+        let lexer = Lexer::new(
+            Syntax::Typescript(TsConfig {
+                tsx: true,
+                dts: false,
+                decorators: true,
+                ..Default::default()
+            }),
+            EsVersion::latest(),
+            (&*fm).into(),
+            Some(&comments),
+        );
+        let mut parser = SWCParser::new_from(lexer);
+        let module = parser.parse_typescript_module();
+        module
+    }
 }
