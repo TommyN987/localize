@@ -32,6 +32,27 @@ impl JSXAnalyzer {
         }
     }
 
+    pub fn trim_content(&mut self) {
+        self.jsx_texts = self
+            .jsx_texts
+            .iter()
+            .map(|jsx_text| {
+                let mut jsx_text = jsx_text.clone();
+                jsx_text.value = jsx_text.value.trim().to_string().into();
+                jsx_text
+            })
+            .collect();
+        self.string_literals = self
+            .string_literals
+            .iter()
+            .map(|string_literal| {
+                let mut string_literal = string_literal.clone();
+                string_literal.value = string_literal.value.trim().to_string().into();
+                string_literal
+            })
+            .collect();
+    }
+
     pub fn analyze_jsx_element(&mut self, jsx_element: &JSXElement) {
         self.analyze_jsx_opening_element(&jsx_element.opening);
         for child in &jsx_element.children {
@@ -48,7 +69,9 @@ impl JSXAnalyzer {
     fn analyze_jsx_child(&mut self, jsx_child: &JSXElementChild) {
         match jsx_child {
             JSXElementChild::JSXText(jsx_text) => {
-                self.jsx_texts.push(jsx_text.clone());
+                if !jsx_text.value.trim().is_empty() {
+                    self.jsx_texts.push(jsx_text.clone());
+                }
             }
             JSXElementChild::JSXExprContainer(jsx_expr_container) => {
                 self.analyze_jsx_expression_container(jsx_expr_container)
@@ -85,10 +108,14 @@ impl JSXAnalyzer {
     fn analyze_literal(&mut self, lit: &Lit) {
         match lit {
             Lit::Str(string_literal) => {
-                self.string_literals.push(string_literal.clone());
+                if !string_literal.value.trim().is_empty() {
+                    self.string_literals.push(string_literal.clone());
+                }
             }
             Lit::JSXText(jsx_text) => {
-                self.jsx_texts.push(jsx_text.clone());
+                if !jsx_text.value.trim().is_empty() {
+                    self.jsx_texts.push(jsx_text.clone());
+                }
             }
             _ => {}
         }

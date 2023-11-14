@@ -1,10 +1,13 @@
 use clap::{command, Arg};
+use evaluate::Evaluate;
 use swc_common::errors::{ColorConfig, Handler};
 use swc_ecma_visit::VisitWith;
 use walker::walk;
 
+mod evaluate;
 mod jsx_analyzer;
 mod parser;
+mod report;
 mod walker;
 
 fn main() {
@@ -32,6 +35,7 @@ fn main() {
                 for child in module.body {
                     child.visit_with(&mut analyzer);
                 }
+                analyzer.trim_content();
                 parser.analyzers.push(analyzer);
             }
             Err(error) => {
@@ -40,6 +44,9 @@ fn main() {
         }
     }
     for analyzer in parser.analyzers {
-        println!("{:?}", analyzer);
+        println!("Filename: {:?}", analyzer.filename);
+        for prop in analyzer.jsx_texts {
+            prop.evaluate(&parser.source_map);
+        }
     }
 }
