@@ -6,7 +6,6 @@ use swc_ecma_visit::Visit;
 
 #[derive(Debug)]
 pub struct JSXAnalyzer {
-    pub filename: String,
     pub jsx_texts: Vec<JSXText>,
     pub string_literals: Vec<Str>,
     pub props: Vec<JSXAttr>,
@@ -23,9 +22,8 @@ impl Visit for JSXAnalyzer {
 }
 
 impl JSXAnalyzer {
-    pub fn new(filename: &str) -> Self {
+    pub fn new() -> Self {
         Self {
-            filename: filename.to_string(),
             jsx_texts: Vec::new(),
             string_literals: Vec::new(),
             props: Vec::new(),
@@ -119,5 +117,82 @@ impl JSXAnalyzer {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use swc_ecma_ast::{Lit, Str};
+
+    #[test]
+    fn analyze_literal_with_non_empty_string() {
+        let mut analyzer = JSXAnalyzer::new();
+        let lit = Str {
+            value: "Hello World".into(),
+            span: swc_common::Span::default(),
+            raw: None,
+        };
+        analyzer.analyze_literal(&Lit::Str(lit.clone()));
+        assert_eq!(analyzer.string_literals.len(), 1);
+        assert_eq!(analyzer.string_literals[0], lit);
+    }
+
+    #[test]
+    fn analyze_literal_with_empty_string() {
+        let mut analyzer = JSXAnalyzer::new();
+        let lit = Str {
+            value: "".into(),
+            span: swc_common::Span::default(),
+            raw: None,
+        };
+        analyzer.analyze_literal(&Lit::Str(lit.clone()));
+        assert!(analyzer.string_literals.is_empty());
+    }
+
+    #[test]
+    fn analyze_literal_with_whitespace_string() {
+        let mut analyzer = JSXAnalyzer::new();
+        let lit = Str {
+            value: " ".into(),
+            span: swc_common::Span::default(),
+            raw: None,
+        };
+        analyzer.analyze_literal(&Lit::Str(lit.clone()));
+        assert!(analyzer.string_literals.is_empty());
+    }
+    #[test]
+    fn analyze_literal_with_non_empty_jsx_text() {
+        let mut analyzer = JSXAnalyzer::new();
+        let jsx_text = JSXText {
+            value: "Some JSX Text".into(),
+            span: swc_common::Span::default(),
+            raw: swc_atoms::Atom::from("Some JSX Text"),
+        };
+        analyzer.analyze_literal(&Lit::JSXText(jsx_text.clone()));
+        assert_eq!(analyzer.jsx_texts.len(), 1);
+        assert_eq!(analyzer.jsx_texts[0], jsx_text);
+    }
+
+    #[test]
+    fn analyze_literal_with_empty_jsx_text() {
+        let mut analyzer = JSXAnalyzer::new();
+        analyzer.analyze_literal(&Lit::JSXText(JSXText {
+            value: "".into(),
+            span: swc_common::Span::default(),
+            raw: swc_atoms::Atom::from(""),
+        }));
+        assert!(analyzer.jsx_texts.is_empty());
+    }
+
+    #[test]
+    fn analyze_literal_with_whitespace_jsx_text() {
+        let mut analyzer = JSXAnalyzer::new();
+        analyzer.analyze_literal(&Lit::JSXText(JSXText {
+            value: "   ".into(),
+            span: swc_common::Span::default(),
+            raw: swc_atoms::Atom::from("   "),
+        }));
+        assert!(analyzer.jsx_texts.is_empty());
     }
 }

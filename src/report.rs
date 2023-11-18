@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Report {
     pub violations: Vec<ReportItem>,
     pub suspicions: Vec<ReportItem>,

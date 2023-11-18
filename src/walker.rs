@@ -1,18 +1,27 @@
-use std::{ffi::OsStr, path::PathBuf};
-
-use walkdir::WalkDir;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn walk(path: &str) -> Vec<PathBuf> {
     let mut result = Vec::new();
-    for entry in WalkDir::new(path) {
-        let entry = entry.expect("Failed to read entry");
-        if entry.file_type().is_file() {
-            if let Some(extension) = entry.path().extension() {
-                if extension == OsStr::new("tsx") {
-                    result.push(entry.path().to_path_buf());
+    visit_dirs(Path::new(path), &mut result).expect("Failed to read directory");
+    result
+}
+
+fn visit_dirs(dir: &Path, result: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, result)?;
+            } else if let Some(extension) = path.extension() {
+                if extension == "tsx" {
+                    result.push(path);
                 }
             }
         }
     }
-    result
+    Ok(())
 }

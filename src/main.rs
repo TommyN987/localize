@@ -31,7 +31,7 @@ fn main() {
         let module = parser.parse_file(&tsx);
         match module {
             Ok(module) => {
-                let mut analyzer = jsx_analyzer::JSXAnalyzer::new(&tsx.to_str().unwrap());
+                let mut analyzer = jsx_analyzer::JSXAnalyzer::new();
                 for child in module.body {
                     child.visit_with(&mut analyzer);
                 }
@@ -43,10 +43,27 @@ fn main() {
             }
         }
     }
+    let mut report = report::Report::default();
     for analyzer in parser.analyzers {
-        println!("Filename: {:?}", analyzer.filename);
-        for prop in analyzer.jsx_texts {
-            prop.evaluate(&parser.source_map);
+        for jsx_test in analyzer.jsx_texts {
+            let report_item = jsx_test.evaluate(&parser.source_map);
+            if let Some(report_item) = report_item {
+                report.violations.push(report_item);
+            }
+        }
+
+        for string_literal in analyzer.string_literals {
+            let report_item = string_literal.evaluate(&parser.source_map);
+            if let Some(report_item) = report_item {
+                report.violations.push(report_item);
+            }
+        }
+
+        for prop in analyzer.props {
+            let report_item = prop.evaluate(&parser.source_map);
+            if let Some(report_item) = report_item {
+                report.violations.push(report_item);
+            }
         }
     }
 }
