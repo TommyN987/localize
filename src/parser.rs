@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
 use swc_common::{comments::SingleThreadedComments, sync::Lrc, SourceMap};
-use swc_ecma_ast::{EsVersion, Module};
-use swc_ecma_parser::{error::Error, lexer::Lexer, Parser as SWCParser, Syntax, TsConfig};
+use swc_ecma_ast::EsVersion;
+use swc_ecma_parser::{lexer::Lexer, Parser as SWCParser, Syntax, TsConfig};
 
-use crate::collector::Collector;
+use crate::analyzer::Analyzer;
 
 pub struct Parser {
     pub source_map: Lrc<SourceMap>,
-    pub analyzers: Vec<Collector>,
+    pub analyzers: Vec<Analyzer>,
 }
 
 impl Parser {
@@ -19,7 +19,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_file(&self, filename: &PathBuf) -> Result<Module, Error> {
+    pub fn parse_file(&mut self, filename: &PathBuf) -> Result<(), swc_ecma_parser::error::Error> {
         let fm = self
             .source_map
             .load_file(filename)
@@ -37,7 +37,8 @@ impl Parser {
             Some(&comments),
         );
         let mut parser = SWCParser::new_from(lexer);
-        let module = parser.parse_typescript_module();
-        module
+        let module = parser.parse_typescript_module()?;
+        self.analyzers.push(Analyzer::new(module));
+        Ok(())
     }
 }

@@ -4,6 +4,7 @@ use swc_common::errors::{ColorConfig, Handler};
 use swc_ecma_visit::VisitWith;
 use walker::walk;
 
+mod analyzer;
 mod collector;
 mod evaluate;
 mod parser;
@@ -17,33 +18,32 @@ fn main() {
 
     let path: &String = matches.get_one("path").unwrap();
 
-    let tsx_vec = walk(path);
+    let source_files = walk(path);
 
     let mut parser = parser::Parser::new();
 
-    for tsx in tsx_vec {
+    for source_file in source_files {
         let error_handler = Handler::with_tty_emitter(
             ColorConfig::Always,
             true,
             false,
             Some(parser.source_map.clone()),
         );
-        let module = parser.parse_file(&tsx);
-        match module {
-            Ok(module) => {
-                let mut analyzer = collector::Collector::new();
-                for child in module.body {
-                    child.visit_with(&mut analyzer);
-                }
-                analyzer.trim_content();
-                parser.analyzers.push(analyzer);
-            }
-            Err(error) => {
-                error.into_diagnostic(&error_handler).emit();
-            }
-        }
+        parser
+            .parse_file(&source_file)
+            .unwrap_or_else(|err| err.into_diagnostic(&error_handler).emit());
     }
+
+    parser.analyzers.iter_mut().for_each(|analyzer| {
+        analyzer.module.body.iter().for_each(|child| {
+            child.visit_with(&mut analyzer.collector);
+        });
+
+        analyzer.collector.trim_content();
+    });
+
     let mut report = report::Report::default();
+
     for analyzer in parser.analyzers {
         // for jsx_test in analyzer.jsx_texts {
         //     let report_item = jsx_test.evaluate(&parser.source_map);
@@ -59,7 +59,7 @@ fn main() {
         //     }
         // }
 
-        for variable in analyzer.variables {
+        for variable in analyzer.collector.variables {
             let report_item = variable.evaluate(&parser.source_map);
             if let Some(report_item) = report_item {
                 println!("Filename: {:?}", report_item.filename);
@@ -70,7 +70,7 @@ fn main() {
             }
         }
 
-        for prop in analyzer.object_properties {
+        for prop in analyzer.collector.object_properties {
             let report_item = prop.evaluate(&parser.source_map);
             if let Some(report_item) = report_item {
                 println!("Filename: {:?}", report_item.filename);
