@@ -14,10 +14,10 @@ fn visit_dirs(dir: &Path, result: &mut Vec<PathBuf>) -> std::io::Result<()> {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_dir() {
+            if path.is_dir() && path.file_name().unwrap() != "node_modules" {
                 visit_dirs(&path, result)?;
             } else if let Some(extension) = path.extension() {
-                if extension == "tsx" {
+                if extension == "tsx" || extension == "ts" {
                     result.push(path);
                 }
             }

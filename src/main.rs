@@ -4,8 +4,8 @@ use swc_common::errors::{ColorConfig, Handler};
 use swc_ecma_visit::VisitWith;
 use walker::walk;
 
+mod collector;
 mod evaluate;
-mod jsx_analyzer;
 mod parser;
 mod report;
 mod walker;
@@ -31,7 +31,7 @@ fn main() {
         let module = parser.parse_file(&tsx);
         match module {
             Ok(module) => {
-                let mut analyzer = jsx_analyzer::JSXAnalyzer::new();
+                let mut analyzer = collector::Collector::new();
                 for child in module.body {
                     child.visit_with(&mut analyzer);
                 }
@@ -45,24 +45,38 @@ fn main() {
     }
     let mut report = report::Report::default();
     for analyzer in parser.analyzers {
-        for jsx_test in analyzer.jsx_texts {
-            let report_item = jsx_test.evaluate(&parser.source_map);
+        // for jsx_test in analyzer.jsx_texts {
+        //     let report_item = jsx_test.evaluate(&parser.source_map);
+        //     if let Some(report_item) = report_item {
+        //         report.violations.push(report_item);
+        //     }
+        // }
+
+        // for string_literal in analyzer.string_literals {
+        //     let report_item = string_literal.evaluate(&parser.source_map);
+        //     if let Some(report_item) = report_item {
+        //         report.violations.push(report_item);
+        //     }
+        // }
+
+        for variable in analyzer.variables {
+            let report_item = variable.evaluate(&parser.source_map);
             if let Some(report_item) = report_item {
+                println!("Filename: {:?}", report_item.filename);
+                println!("Line: {:?}", report_item.line);
+
                 report.violations.push(report_item);
+                println!("{:?}", variable);
             }
         }
 
-        for string_literal in analyzer.string_literals {
-            let report_item = string_literal.evaluate(&parser.source_map);
-            if let Some(report_item) = report_item {
-                report.violations.push(report_item);
-            }
-        }
-
-        for prop in analyzer.props {
+        for prop in analyzer.object_properties {
             let report_item = prop.evaluate(&parser.source_map);
             if let Some(report_item) = report_item {
+                println!("Filename: {:?}", report_item.filename);
+                println!("Line: {:?}", report_item.line);
                 report.violations.push(report_item);
+                println!("{:?}", prop);
             }
         }
     }

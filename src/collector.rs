@@ -1,17 +1,18 @@
 use swc_ecma_ast::{
-    Expr, JSXAttr, JSXAttrOrSpread, JSXElement, JSXElementChild, JSXExpr, JSXExprContainer,
-    JSXFragment, JSXOpeningElement, JSXText, Lit, Str,
+    Expr, Ident, JSXElement, JSXElementChild, JSXExpr, JSXExprContainer, JSXFragment, JSXText, Lit,
+    MemberExpr, Str,
 };
 use swc_ecma_visit::Visit;
 
 #[derive(Debug)]
-pub struct JSXAnalyzer {
+pub struct Collector {
     pub jsx_texts: Vec<JSXText>,
     pub string_literals: Vec<Str>,
-    pub props: Vec<JSXAttr>,
+    pub variables: Vec<Ident>,
+    pub object_properties: Vec<MemberExpr>,
 }
 
-impl Visit for JSXAnalyzer {
+impl Visit for Collector {
     fn visit_jsx_element(&mut self, jsx_element: &JSXElement) {
         self.analyze_jsx_element(jsx_element);
     }
@@ -21,12 +22,13 @@ impl Visit for JSXAnalyzer {
     }
 }
 
-impl JSXAnalyzer {
+impl Collector {
     pub fn new() -> Self {
         Self {
             jsx_texts: Vec::new(),
             string_literals: Vec::new(),
-            props: Vec::new(),
+            variables: Vec::new(),
+            object_properties: Vec::new(),
         }
     }
 
@@ -52,7 +54,6 @@ impl JSXAnalyzer {
     }
 
     pub fn analyze_jsx_element(&mut self, jsx_element: &JSXElement) {
-        self.analyze_jsx_opening_element(&jsx_element.opening);
         for child in &jsx_element.children {
             self.analyze_jsx_child(child);
         }
@@ -80,23 +81,12 @@ impl JSXAnalyzer {
         }
     }
 
-    fn analyze_jsx_opening_element(&mut self, jsx_opening_element: &JSXOpeningElement) {
-        for attr in &jsx_opening_element.attrs {
-            match attr {
-                JSXAttrOrSpread::JSXAttr(attr) => {
-                    if let Some(_value) = &attr.value {
-                        self.props.push(attr.clone())
-                    }
-                }
-                JSXAttrOrSpread::SpreadElement(_) => {}
-            }
-        }
-    }
-
     fn analyze_jsx_expression_container(&mut self, jsx_expr_container: &JSXExprContainer) {
         match &jsx_expr_container.expr {
             JSXExpr::Expr(expr) => match expr.as_ref() {
                 Expr::Lit(lit) => self.analyze_literal(lit),
+                Expr::Ident(ident) => self.variables.push(ident.clone()),
+                Expr::Member(member_expr) => self.object_properties.push(member_expr.clone()),
                 _ => {}
             },
             JSXExpr::JSXEmptyExpr(_) => {}
@@ -127,7 +117,7 @@ mod test {
 
     #[test]
     fn analyze_literal_with_non_empty_string() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         let lit = Str {
             value: "Hello World".into(),
             span: swc_common::Span::default(),
@@ -140,7 +130,7 @@ mod test {
 
     #[test]
     fn analyze_literal_with_empty_string() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         let lit = Str {
             value: "".into(),
             span: swc_common::Span::default(),
@@ -152,7 +142,7 @@ mod test {
 
     #[test]
     fn analyze_literal_with_whitespace_string() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         let lit = Str {
             value: " ".into(),
             span: swc_common::Span::default(),
@@ -163,7 +153,7 @@ mod test {
     }
     #[test]
     fn analyze_literal_with_non_empty_jsx_text() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         let jsx_text = JSXText {
             value: "Some JSX Text".into(),
             span: swc_common::Span::default(),
@@ -176,7 +166,7 @@ mod test {
 
     #[test]
     fn analyze_literal_with_empty_jsx_text() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         analyzer.analyze_literal(&Lit::JSXText(JSXText {
             value: "".into(),
             span: swc_common::Span::default(),
@@ -187,7 +177,7 @@ mod test {
 
     #[test]
     fn analyze_literal_with_whitespace_jsx_text() {
-        let mut analyzer = JSXAnalyzer::new();
+        let mut analyzer = Collector::new();
         analyzer.analyze_literal(&Lit::JSXText(JSXText {
             value: "   ".into(),
             span: swc_common::Span::default(),

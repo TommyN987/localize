@@ -4,11 +4,11 @@ use swc_common::{comments::SingleThreadedComments, sync::Lrc, SourceMap};
 use swc_ecma_ast::{EsVersion, Module};
 use swc_ecma_parser::{error::Error, lexer::Lexer, Parser as SWCParser, Syntax, TsConfig};
 
-use crate::jsx_analyzer::JSXAnalyzer;
+use crate::collector::Collector;
 
 pub struct Parser {
     pub source_map: Lrc<SourceMap>,
-    pub analyzers: Vec<JSXAnalyzer>,
+    pub analyzers: Vec<Collector>,
 }
 
 impl Parser {

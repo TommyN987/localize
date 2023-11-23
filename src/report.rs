@@ -9,5 +9,4 @@ pub struct ReportItem {
     pub filename: String,
     pub line: usize,
     pub string: String,
-    pub prop_name: Option<String>,
 }
